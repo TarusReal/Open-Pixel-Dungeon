@@ -3,7 +3,30 @@ apply plugin: 'java-library'
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 java.sourceCompatibility = java.targetCompatibility = appJavaCompatibility
 
+sourceSets {
+    //game code loads assets via Gdx.files.internal(...), which (like the real desktop client,
+    //see desktop/build.gradle's processResources) falls back to classpath lookup. Without this,
+    //any class touching sprites/sounds/text at init time fails with "File not found" in tests.
+    test.resources.srcDir "src/main/assets"
+}
+
 dependencies {
     api project(':SPD-classes')
     implementation project(':services')
+
+    testImplementation "org.junit.jupiter:junit-jupiter:5.11.3"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+    //headless (no window, no OpenGL) libGDX backend, used only to give static game code
+    //a valid Gdx.app/Gdx.files/Gdx.graphics context to run against in tests
+    testImplementation "com.badlogicgames.gdx:gdx-backend-headless:$gdxVersion"
+    //gdx-backend-headless still loads gdx's native library (math/sound helpers) on startup,
+    //even though nothing renders - without this it fails with a SharedLibraryLoadRuntimeException
+    testRuntimeOnly "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}
+
+test {
+    useJUnitPlatform()
+    //game state (Dungeon, Actor, Random, ...) lives in static fields shared by the whole JVM,
+    //so test classes/methods must never run concurrently. See docs/testing.md.
+    maxParallelForks = 1
 }

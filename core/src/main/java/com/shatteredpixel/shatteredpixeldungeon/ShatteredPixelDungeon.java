@@ -47,13 +47,22 @@ public class ShatteredPixelDungeon extends Game {
 	public ShatteredPixelDungeon( PlatformSupport platform ) {
 		super( sceneClass == null ? WelcomeScene.class : sceneClass, platform );
 
+		registerBundleAliases();
+	}
+
+	//every Bundle.addAlias call for a renamed/moved Bundlable class goes here. Kept as its own
+	//method (rather than inline in the constructor) so it can be called - and so the aliases it
+	//registers can be tested - without constructing a full ShatteredPixelDungeon/Game instance.
+	//See docs/testing.md and BundleAliasTest.
+	public static void registerBundleAliases() {
+
 		//pre-v3.3.0
 		com.watabou.utils.Bundle.addAlias(
 				com.shatteredpixel.shatteredpixeldungeon.items.keys.WornKey.class,
 				"com.shatteredpixel.shatteredpixeldungeon.items.keys.SkeletonKey" );
 
 	}
-	
+
 	@Override
 	public void create() {
 		super.create();
