@@ -66,14 +66,17 @@ with its weight(s) directly in one declaration (see `entry(...)`/`setEntries()` 
 `Generator.java`) instead of two hand-maintained literals - this closes the main way that pairing
 used to drift silently, though a golden-master test is still useful as a second line of defense
 (entries can still be miscopied by hand, e.g. two adjacent lines swapped). `StandardRoom` still
-uses the older two-parallel-array pattern and hasn't had the same treatment yet.
+uses the older two-parallel-array pattern and hasn't had the same treatment yet - that refactor is
+separate from, and not a prerequisite for, the golden-master coverage below.
 
 See `GeneratorGoldenMasterTest` for the golden-master pattern: draw a few thousand times with
 a fixed seed, tally outcomes by class name, assert the tally against a checked-in expected value.
 When you need to regenerate that expected value after a deliberate change, the test class doc
 comment explains the exact steps (temporarily empty the expected array, run the test, paste the
-actual value from the assertion failure back in). The same pattern is the template for a future
-`StandardRoom` golden-master test, once that refactor happens.
+actual value from the assertion failure back in). `StandardRoomGoldenMasterTest` and
+`MobSpawnerGoldenMasterTest` already follow the same pattern for their respective classes (see
+"Known gotcha: some selection methods read the ambient generator directly" below for how they
+handle seeding).
 
 `BundleAliasTest` covers the savegame-rename countermeasure (audit finding #4): it simulates an
 "old" save by constructing a `Bundle` with a class name that no longer exists, and checks that
