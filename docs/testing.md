@@ -54,14 +54,24 @@ Override these hooks when the defaults don't fit:
 
 Golden-master tests (locking down a large, observable result - like a loot distribution - so a
 refactor can't silently change it without a test catching it) are a good fit for classes like
-`Generator` or `StandardRoom`, where item/room classes and their selection weights are stored as
-two parallel arrays held together only by their shared index - a refactor of that storage can
-shift which weight belongs to which class without the compiler noticing. See
-`GeneratorGoldenMasterTest` for the pattern: draw a few thousand times with
+`Generator` or `StandardRoom`, where item/room classes and their selection weights need to stay
+correctly paired. `Generator.Category` used to store classes and weights as two parallel arrays
+held together only by their shared index - a refactor of that storage (or a slip while adding a
+new item) could shift which weight belongs to which class without the compiler noticing; the
+WEP_T3 entry in `Generator.java` (see its inline comment) is a real example that shipped this
+way. `Generator.Category` has since been rebuilt around `Category.ItemEntry`, which pairs a class
+with its weight(s) directly in one declaration (see `entry(...)`/`setEntries()` in
+`Generator.java`) instead of two hand-maintained literals - this closes the main way that pairing
+used to drift silently, though a golden-master test is still useful as a second line of defense
+(entries can still be miscopied by hand, e.g. two adjacent lines swapped). `StandardRoom` still
+uses the older two-parallel-array pattern and hasn't had the same treatment yet.
+
+See `GeneratorGoldenMasterTest` for the golden-master pattern: draw a few thousand times with
 a fixed seed, tally outcomes by class name, assert the tally against a checked-in expected value.
 When you need to regenerate that expected value after a deliberate change, the test class doc
 comment explains the exact steps (temporarily empty the expected array, run the test, paste the
-actual value from the assertion failure back in).
+actual value from the assertion failure back in). The same pattern is the template for a future
+`StandardRoom` golden-master test, once that refactor happens.
 
 `BundleAliasTest` covers the savegame-rename countermeasure (audit finding #4): it simulates an
 "old" save by constructing a `Bundle` with a class name that no longer exists, and checks that
@@ -149,3 +159,21 @@ still visibly differ (a wand's count moving by one is the same root cause as a w
 effect is just far more visible for weapons/armor/missiles, which are split into many small
 sub-buckets where a one-count shift changes proportions noticeably. This is a hint to look for the
 mechanism, not a reliable per-category test.
+
+## Known gotcha: some selection methods read the ambient generator directly, with no seed bracket of their own
+
+Unlike `Generator.random()` (see above), `StandardRoom.createRoom()` and
+`MobSpawner.getMobRotation(int)` never push their own seeded generator - they just draw from
+whatever generator happens to be on top of the stack when they're called. During real level
+generation that's `Level.create()`'s `Dungeon.seedCurDepth()` bracket, so it looks reproducible
+there; called any other way (including from a test), it's genuine non-reproducible randomness
+unless the caller pushes a seed itself first.
+
+`StandardRoomGoldenMasterTest` and `MobSpawnerGoldenMasterTest` both work around this the same
+way: bracket their entire draw loop (across every depth under test) in one
+`Random.pushGenerator(testSeed())` / `popGenerator()` pair, rather than reseeding per depth like
+`GeneratorGoldenMasterTest` does with `Dungeon.seedForDepth(...)`. One consequence worth knowing
+if a golden-master test in this style ever fails unexpectedly: because the whole loop shares one
+RNG stream, a change affecting an *earlier* depth in `FIXED_DEPTHS` shifts the RNG draws (and
+therefore the recorded counts) for every *later* depth too - a real diff isn't always confined to
+the depth whose data actually changed.

@@ -29,8 +29,6 @@ import com.watabou.utils.Point;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 
-import java.util.ArrayList;
-
 public abstract class StandardRoom extends Room {
 	
 	public enum SizeCategory {
@@ -120,75 +118,110 @@ public abstract class StandardRoom extends Room {
 		return (Terrain.flags[l.map[cell]] & Terrain.SOLID) == 0;
 	}
 
-	//FIXME this is a very messy way of handing variable standard rooms
-	private static ArrayList<Class<?extends StandardRoom>> rooms = new ArrayList<>();
-	static {
-		rooms.add(SewerPipeRoom.class);
-		rooms.add(RingRoom.class);
-		rooms.add(WaterBridgeRoom.class);
-		rooms.add(RegionDecoPatchRoom.class);
-		rooms.add(CircleBasinRoom.class);
+	//pairs a room class with its weight in each of the 7 depth "brackets" that StandardRoom's
+	//selection actually distinguishes (see BRACKET_DEPTHS below) - the room equivalent of
+	//Generator.Category.ItemEntry (audit finding #1: this used to be a room class list plus 26
+	//hand-maintained float[35] literals, held together only by shared array index; see
+	//docs/testing.md and StandardRoomGoldenMasterTest, which locks down that today's distribution
+	//is unchanged by this refactor).
+	private static class RoomEntry {
+		final Class<? extends StandardRoom> cls;
+		//[depth1, depth2to4, depth5, depth6to10, depth11to15, depth16to20, depth21to26]
+		final float[] weights;
 
-		rooms.add(RegionDecoLineRoom.class);
-		rooms.add(SegmentedRoom.class);
-		rooms.add(PillarsRoom.class);
-		rooms.add(ChasmBridgeRoom.class);
-		rooms.add(CellBlockRoom.class);
-
-		rooms.add(CaveRoom.class);
-		rooms.add(RegionDecoBridgeRoom.class);
-		rooms.add(CavesFissureRoom.class);
-		rooms.add(CirclePitRoom.class);
-		rooms.add(CircleWallRoom.class);
-
-		rooms.add(HallwayRoom.class);
-		rooms.add(LibraryHallRoom.class);
-		rooms.add(LibraryRingRoom.class);
-		rooms.add(StatuesRoom.class);
-		rooms.add(SegmentedLibraryRoom.class);
-
-		rooms.add(RuinsRoom.class);
-		rooms.add(RegionDecoPatchRoom.class);
-		rooms.add(ChasmRoom.class);
-		rooms.add(SkullsRoom.class);
-		rooms.add(RitualRoom.class);
-
-
-		rooms.add(PlantsRoom.class);
-		rooms.add(AquariumRoom.class);
-		rooms.add(PlatformRoom.class);
-		rooms.add(BurnedRoom.class);
-		rooms.add(FissureRoom.class);
-		rooms.add(GrassyGraveRoom.class);
-		rooms.add(StripedRoom.class);
-		rooms.add(StudyRoom.class);
-		rooms.add(SuspiciousChestRoom.class);
-		rooms.add(MinefieldRoom.class);
+		private RoomEntry( Class<? extends StandardRoom> cls, float d1, float d2to4, float d5,
+							float d6to10, float d11to15, float d16to20, float d21to26 ) {
+			this.cls = cls;
+			this.weights = new float[]{d1, d2to4, d5, d6to10, d11to15, d16to20, d21to26};
+		}
 	}
-	
+
+	private static RoomEntry entry( Class<? extends StandardRoom> cls, float d1, float d2to4, float d5,
+									 float d6to10, float d11to15, float d16to20, float d21to26 ) {
+		return new RoomEntry(cls, d1, d2to4, d5, d6to10, d11to15, d16to20, d21to26);
+	}
+
+	//deliberately an array, not a Map<Class,RoomEntry>: RegionDecoPatchRoom appears twice (once
+	//per region, with different weights each time) - a class-keyed structure couldn't represent
+	//that, an array of pairs (same shape as Generator.Category.ItemEntry[]) just works, exactly
+	//as it does today via two separate list positions.
+	private static final RoomEntry[] rooms = new RoomEntry[] {
+			entry(SewerPipeRoom.class,       16, 16, 16, 0, 0, 0, 0),
+			entry(RingRoom.class,             8,  8,  8, 0, 0, 0, 0),
+			entry(WaterBridgeRoom.class,      8,  8,  8, 0, 0, 0, 0),
+			entry(RegionDecoPatchRoom.class,  4,  4,  4, 0, 0, 0, 0),
+			entry(CircleBasinRoom.class,      4,  4,  0, 0, 0, 0, 0),
+
+			entry(RegionDecoLineRoom.class,   0, 0, 0, 10, 0, 0, 0),
+			entry(SegmentedRoom.class,        0, 0, 0, 10, 0, 0, 0),
+			entry(PillarsRoom.class,          0, 0, 0, 10, 0, 0, 0),
+			entry(ChasmBridgeRoom.class,      0, 0, 0,  5, 0, 0, 0),
+			entry(CellBlockRoom.class,        0, 0, 0,  5, 0, 0, 0),
+
+			entry(CaveRoom.class,             0, 0, 0, 0, 16, 0, 0),
+			entry(RegionDecoBridgeRoom.class, 0, 0, 0, 0,  8, 0, 0),
+			entry(CavesFissureRoom.class,     0, 0, 0, 0,  8, 0, 0),
+			entry(CirclePitRoom.class,        0, 0, 0, 0,  4, 0, 0),
+			entry(CircleWallRoom.class,       0, 0, 0, 0,  4, 0, 0),
+
+			entry(HallwayRoom.class,          0, 0, 0, 0, 0, 10, 0),
+			entry(LibraryHallRoom.class,      0, 0, 0, 0, 0, 10, 0),
+			entry(LibraryRingRoom.class,      0, 0, 0, 0, 0, 10, 0),
+			entry(StatuesRoom.class,          0, 0, 0, 0, 0,  5, 0),
+			entry(SegmentedLibraryRoom.class, 0, 0, 0, 0, 0,  5, 0),
+
+			entry(RuinsRoom.class,            0, 0, 0, 0, 0, 0, 10),
+			entry(RegionDecoPatchRoom.class,  0, 0, 0, 0, 0, 0, 10),
+			entry(ChasmRoom.class,            0, 0, 0, 0, 0, 0, 10),
+			entry(SkullsRoom.class,           0, 0, 0, 0, 0, 0,  5),
+			entry(RitualRoom.class,           0, 0, 0, 0, 0, 0,  5),
+
+			entry(PlantsRoom.class,           1, 1, 0, 1, 1, 1, 1),
+			entry(AquariumRoom.class,         0, 1, 0, 1, 1, 1, 1),
+			entry(PlatformRoom.class,         1, 1, 0, 1, 1, 1, 1),
+			entry(BurnedRoom.class,           0, 1, 0, 1, 1, 1, 1),
+			entry(FissureRoom.class,          1, 1, 0, 1, 1, 1, 1),
+			entry(GrassyGraveRoom.class,      0, 1, 0, 1, 1, 1, 1),
+			entry(StripedRoom.class,          1, 1, 0, 1, 1, 1, 1),
+			entry(StudyRoom.class,            1, 1, 0, 1, 1, 1, 1),
+			entry(SuspiciousChestRoom.class,  0, 1, 0, 1, 1, 1, 1),
+			entry(MinefieldRoom.class,        0, 1, 0, 1, 1, 1, 1),
+	};
+
+	//depths sharing each bracket in the weights arrays above, in the same order - used only to
+	//expand into chances[27][] below
+	private static final int[][] BRACKET_DEPTHS = new int[][] {
+			{1},
+			{2, 3, 4},
+			{5},
+			{6, 7, 8, 9, 10},
+			{11, 12, 13, 14, 15},
+			{16, 17, 18, 19, 20},
+			{21, 22, 23, 24, 25, 26},
+	};
+
 	private static float[][] chances = new float[27][];
 	static {
-		chances[1] =  new float[]{16,8,8,4,4,   0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,  1,0,1,0,1,0,1,1,0,0};
-		chances[2] =  new float[]{16,8,8,4,4,   0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,  1,1,1,1,1,1,1,1,1,1};
-		chances[4] =  chances[3] = chances[2];
-		chances[5] =  new float[]{16,8,8,4,0,   0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,  0,0,0,0,0,0,0,0,0,0};
-
-		chances[6] =  new float[]{0,0,0,0,0, 10,10,10,5,5, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0,  1,1,1,1,1,1,1,1,1,1};
-		chances[10] = chances[9] = chances[8] = chances[7] = chances[6];
-
-		chances[11] = new float[]{0,0,0,0,0, 0,0,0,0,0, 16,8,8,4,4,   0,0,0,0,0, 0,0,0,0,0,  1,1,1,1,1,1,1,1,1,1};
-		chances[15] = chances[14] = chances[13] = chances[12] = chances[11];
-
-		chances[16] = new float[]{0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 10,10,10,5,5, 0,0,0,0,0,  1,1,1,1,1,1,1,1,1,1};
-		chances[20] = chances[19] = chances[18] = chances[17] = chances[16];
-
-		chances[21] = new float[]{0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 0,0,0,0,0, 10,10,10,5,5,  1,1,1,1,1,1,1,1,1,1};
-		chances[26] = chances[25] = chances[24] = chances[23] = chances[22] = chances[21];
+		//one array object per bracket, assigned to every depth in that bracket - reproduces
+		//today's array-aliasing (e.g. chances[2]==chances[3]==chances[4]) for every bracket that
+		//spans more than one depth, not just the one CLAUDE.md calls out as an example. Random.chances
+		//(SPD-classes/.../Random.java) only ever reads these arrays, never mutates them, so sharing
+		//one object across several depths has no behavioral effect either way - it's purely a
+		//construction-time choice, preserved here rather than normalized away.
+		for (int bracket = 0; bracket < BRACKET_DEPTHS.length; bracket++) {
+			float[] weights = new float[rooms.length];
+			for (int i = 0; i < rooms.length; i++) {
+				weights[i] = rooms[i].weights[bracket];
+			}
+			for (int depth : BRACKET_DEPTHS[bracket]) {
+				chances[depth] = weights;
+			}
+		}
 	}
-	
-	
+
+
 	public static StandardRoom createRoom(){
-		return Reflection.newInstance(rooms.get(Random.chances(chances[Dungeon.depth])));
+		return Reflection.newInstance(rooms[Random.chances(chances[Dungeon.depth])].cls);
 	}
-	
+
 }

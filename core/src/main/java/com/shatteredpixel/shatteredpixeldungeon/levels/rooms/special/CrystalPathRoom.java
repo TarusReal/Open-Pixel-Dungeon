@@ -205,9 +205,9 @@ public class CrystalPathRoom extends SpecialRoom {
 				if (b instanceof ExoticPotion){
 					bCls = ExoticPotion.exoToReg.get(bCls);
 				}
-				for (int i = 0; i < Generator.Category.POTION.classes.length; i++){
-					if (aCls == Generator.Category.POTION.classes[i]) aVal = (int)Generator.Category.POTION.defaultProbsTotal[i];
-					if (bCls == Generator.Category.POTION.classes[i]) bVal = (int)Generator.Category.POTION.defaultProbsTotal[i];
+				for (Generator.Category.ItemEntry e : Generator.Category.POTION.entries){
+					if (aCls == e.cls) aVal = (int)e.totalProb();
+					if (bCls == e.cls) bVal = (int)e.totalProb();
 				}
 				return bVal - aVal;
 			}
@@ -223,9 +223,9 @@ public class CrystalPathRoom extends SpecialRoom {
 				if (b instanceof ExoticScroll){
 					bCls = ExoticScroll.exoToReg.get(bCls);
 				}
-				for (int i = 0; i < Generator.Category.SCROLL.classes.length; i++){
-					if (aCls == Generator.Category.SCROLL.classes[i]) aVal = (int)Generator.Category.SCROLL.defaultProbsTotal[i];
-					if (bCls == Generator.Category.SCROLL.classes[i]) bVal = (int)Generator.Category.SCROLL.defaultProbsTotal[i];
+				for (Generator.Category.ItemEntry e : Generator.Category.SCROLL.entries){
+					if (aCls == e.cls) aVal = (int)e.totalProb();
+					if (bCls == e.cls) bVal = (int)e.totalProb();
 				}
 				return bVal - aVal;
 			}

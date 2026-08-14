@@ -90,12 +90,15 @@ public class UnstableSpellbook extends Artifact {
 	private void setupScrolls(){
 		scrolls.clear();
 
-		Class<?>[] scrollClasses = Generator.Category.SCROLL.classes;
-		float[] probs = Generator.Category.SCROLL.defaultProbsTotal.clone(); //array of primitives, clone gives deep copy.
+		Generator.Category.ItemEntry[] scrollEntries = Generator.Category.SCROLL.entries;
+		float[] probs = new float[scrollEntries.length];
+		for (int i = 0; i < scrollEntries.length; i++){
+			probs[i] = scrollEntries[i].totalProb();
+		}
 		int i = Random.chances(probs);
 
 		while (i != -1){
-			scrolls.add(scrollClasses[i]);
+			scrolls.add(scrollEntries[i].cls);
 			probs[i] = 0;
 
 			i = Random.chances(probs);

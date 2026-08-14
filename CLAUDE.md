@@ -75,10 +75,26 @@ IDs wurden historisch vergeben (nicht lückenlos: 31, 37, 38 wurden nachträglic
 angehängt). Obergrenze ist 256 (`Terrain.flags = new int[256]`). Bestehende Zahlen
 niemals ändern, neue nur an freien Stellen ergänzen.
 
-**5. Parallele Arrays ohne Namensbindung.** `Generator.Category` hält `classes[]` und
-`probs[]` positionsgleich; `StandardRoom` hält eine Raumliste und 21 `chances`-Arrays
-mit je 35 Slots. Ein Eintrag in der Mitte verschiebt alles Nachfolgende — der Compiler
-merkt davon nichts. `Generator` speichert diese Arrays zusätzlich im Savegame.
+**5. Parallele Arrays ohne Namensbindung (für `Generator` behoben, `StandardRoom` noch offen).**
+`Generator.Category` deklarierte Item-Klasse und Gewicht(e) früher in zwei separaten,
+von Hand parallel gepflegten Literalen (`classes[]` neben `defaultProbs[]`) — genau das
+führte zum bekannten WEP_T3-Bug (T3 verwendet versehentlich `WEP_T1.defaultProbs`, siehe
+Kommentar bei `WEP_T3.probs` in `Generator.java`; bewusst unverändert gelassen, da eine
+Verhaltensänderung eine eigene Entscheidung braucht). Seit der Umstellung auf
+`Generator.Category.ItemEntry` (`entry(Klasse, Gewicht[, Gewicht2])`, kombiniert über
+`setEntries()`/`setEntriesWithSecondDeck()`/`setEntriesNoDeck()`) steht Klasse und Gewicht
+in einer Zeile; `classes`/`probs`/`defaultProbs`/`defaultProbs2`/`defaultProbsTotal` bleiben
+als daraus abgeleitete Felder bestehen, nur noch für lesende Aufrufer außerhalb von
+`Generator.java` (`Catalog`, `ItemStatusHandler`-Konstruktion in `Potion`/`Scroll`/`Ring`,
+`Succubus`/`Scorpio`-Loot, `QuickRecipe`, `CustomNoteButton`). Wo Aufrufer Klasse und Gewicht
+gemeinsam auswerten mussten (`UnstableSpellbook`, `CrystalPathRoom`), lesen sie jetzt
+`Category.<NAME>.entries` (`ItemEntry[]`) statt zwei Arrays über einen Index zu koppeln.
+Das Speicherformat (`Generator.storeInBundle`/`restoreFromBundle`) ist entsprechend
+namensbasiert (Klassenname als Bundle-Key je Item, Enum-Name als Key je Kategorie) statt
+positionsbasiert; es gibt keinen Migrationscode für alte Spielstände, da es noch keine gibt.
+`StandardRoom` hält weiterhin eine Raumliste und 21 `chances`-Arrays mit je 35 Slots
+positionsgebunden — dieselbe Fehlerklasse, noch nicht angegangen. Ein Eintrag in der Mitte
+verschiebt dort alles Nachfolgende — der Compiler merkt davon nichts.
 
 **6. Neue Inhalte müssen an vielen Stellen registriert werden.** Ein neues Item braucht
 typischerweise: Klasse, `Generator`, `ItemSpriteSheet`, `journal/Catalog`, ggf.
