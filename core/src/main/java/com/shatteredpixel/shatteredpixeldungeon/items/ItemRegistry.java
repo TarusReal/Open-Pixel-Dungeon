@@ -475,20 +475,22 @@ public class ItemRegistry {
 				entry(WarScythe.class, 2)
 		);
 
-		//see Generator.randomArmor
-		Category.ARMOR.setEntriesNoDeck(
-				entry(ClothArmor.class, 1),
-				entry(LeatherArmor.class, 1),
-				entry(MailArmor.class, 1),
-				entry(ScaleArmor.class, 1),
-				entry(PlateArmor.class, 1),
-				entry(WarriorArmor.class, 0),
-				entry(MageArmor.class, 0),
-				entry(RogueArmor.class, 0),
-				entry(HuntressArmor.class, 0),
-				entry(DuelistArmor.class, 0),
-				entry(ClericArmor.class, 0)
-		);
+		//see Generator.randomArmor - it selects purely via floorSetTierProbs against this classes
+		//list, never per-item weights, so (unlike WEP_T*/MIS_T*) there's no entry() weight to pair
+		//with each class here - just the classes themselves.
+		Category.ARMOR.classes = new Class<?>[]{
+				ClothArmor.class,
+				LeatherArmor.class,
+				MailArmor.class,
+				ScaleArmor.class,
+				PlateArmor.class,
+				WarriorArmor.class,
+				MageArmor.class,
+				RogueArmor.class,
+				HuntressArmor.class,
+				DuelistArmor.class,
+				ClericArmor.class
+		};
 
 		//see Generator.randomMissile
 		Category.MISSILE.setEntriesNoDeck();
