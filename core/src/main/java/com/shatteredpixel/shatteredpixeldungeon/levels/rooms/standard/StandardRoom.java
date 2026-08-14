@@ -171,6 +171,10 @@ public abstract class StandardRoom extends Room {
 			entry(SegmentedLibraryRoom.class, 0, 0, 0, 0, 0,  5, 0),
 
 			entry(RuinsRoom.class,            0, 0, 0, 0, 0, 0, 10),
+			//2nd RegionDecoPatchRoom entry, not a copy-paste dupe of the one above: confirmed via
+			//git history that the two were added in separate commits for separate, non-overlapping
+			//depth brackets (d1-5 above vs. d21-26 here) - same generic room reused per-region.
+			//Upstream (00-Evan/shattered-pixel-dungeon) carries the identical double entry.
 			entry(RegionDecoPatchRoom.class,  0, 0, 0, 0, 0, 0, 10),
 			entry(ChasmRoom.class,            0, 0, 0, 0, 0, 0, 10),
 			entry(SkullsRoom.class,           0, 0, 0, 0, 0, 0,  5),
