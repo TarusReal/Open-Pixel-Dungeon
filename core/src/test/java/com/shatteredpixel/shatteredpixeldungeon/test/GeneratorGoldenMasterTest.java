@@ -45,6 +45,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * If you intentionally change loot odds: that's a deliberate balance change, not something to
  * wave through here. Regenerate EXPECTED_DISTRIBUTION deliberately (see its comment) as its own
  * reviewable step.
+ *
+ * <p><b>Note on the WEP_T3 defaultProbs fix (CLAUDE.md "Balance-Fix" session):</b> ItemRegistry
+ * used to clobber {@code WEP_T3.probs} with {@code WEP_T1.defaultProbs} right after setting it
+ * correctly via {@code setEntries()}; that stray assignment has been deleted. It did NOT change
+ * EXPECTED_DISTRIBUTION below (confirmed by running this test before/after): {@code Dungeon.init()}
+ * calls {@code Generator.fullReset()} in {@code GameTestBase}'s {@code @BeforeEach}, which
+ * overwrites {@code probs} with {@code defaultProbs.clone()} for every category before this test
+ * ever draws an item - and {@code defaultProbs} was never wrong, only the post-setEntries()
+ * override of {@code probs} was. The bug was real but had no observable effect once a
+ * reset/fullReset had run, which is exactly the sequence real level generation goes through.
  */
 class GeneratorGoldenMasterTest extends GameTestBase {
 

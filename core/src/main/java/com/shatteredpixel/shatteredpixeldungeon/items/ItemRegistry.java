@@ -268,8 +268,10 @@ import static com.shatteredpixel.shatteredpixeldungeon.items.Generator.Category.
  *
  * <p><b>Generator side ({@link #registerGeneratorEntries()}):</b> this is the exact content that
  * used to live in {@code Generator.Category}'s own static block, moved here unchanged (same
- * {@code entry(...)}/{@code setEntries*(...)} calls, same order, same weights - including the
- * intentionally-preserved WEP_T3 bug, see the comment at its call site). {@code Generator.java}
+ * {@code entry(...)}/{@code setEntries*(...)} calls, same order, same weights - WEP_T3's former
+ * bug (an extra assignment after {@code setEntries()} clobbered its probs with WEP_T1's) has since
+ * been fixed by simply deleting that stray line; {@code setEntries()} alone already produces the
+ * correct, uniform weights, see {@code GeneratorGoldenMasterTest}). {@code Generator.java}
  * now just calls {@link #registerGeneratorEntries()} to trigger this; {@code Category.setEntries}
  * and friends were widened from {@code private} to package-private so this class (same package)
  * can call them.
@@ -452,11 +454,6 @@ public class ItemRegistry {
 				entry(Sai.class, 2),
 				entry(Whip.class, 2)
 		);
-		//known bug (audit finding, kept unchanged intentionally - see CLAUDE.md/docs/testing.md):
-		//this overwrites the correct probs set by setEntries() above with WEP_T1's defaultProbs.
-		//Only matters before the first Generator.reset()/fullReset() call, since reset() replaces
-		//probs with WEP_T3.defaultProbs.clone() (which IS correct) as soon as one runs.
-		Category.WEP_T3.probs = Category.WEP_T1.defaultProbs.clone();
 
 		Category.WEP_T4.setEntries(
 				entry(Longsword.class, 2),

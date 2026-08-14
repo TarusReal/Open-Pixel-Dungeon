@@ -58,8 +58,10 @@ refactor can't silently change it without a test catching it) are a good fit for
 correctly paired. `Generator.Category` used to store classes and weights as two parallel arrays
 held together only by their shared index - a refactor of that storage (or a slip while adding a
 new item) could shift which weight belongs to which class without the compiler noticing; the
-WEP_T3 entry in `Generator.java` (see its inline comment) is a real example that shipped this
-way. `Generator.Category` has since been rebuilt around `Category.ItemEntry`, which pairs a class
+WEP_T3 entry in `ItemRegistry.java` shipped exactly this bug for a while (an assignment after
+`setEntries()` clobbered its weights with WEP_T1's - since fixed by deleting that stray line, see
+`GeneratorGoldenMasterTest`'s class comment for how that was verified). `Generator.Category` has
+since been rebuilt around `Category.ItemEntry`, which pairs a class
 with its weight(s) directly in one declaration (see `entry(...)`/`setEntries()` in
 `Generator.java`) instead of two hand-maintained literals - this closes the main way that pairing
 used to drift silently, though a golden-master test is still useful as a second line of defense
