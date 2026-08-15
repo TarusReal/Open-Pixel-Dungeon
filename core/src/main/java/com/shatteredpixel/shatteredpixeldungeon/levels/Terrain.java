@@ -21,6 +21,13 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.levels;
 
+//Tile IDs are persisted as raw ints in savegames (Level.map is int[]).
+//IDs 0-38 are currently assigned (see constants below); flags[] below caps the
+//range at 256. Existing IDs must never be changed or reordered, even if that
+//leaves them out of numeric grouping with related tiles (e.g. CRYSTAL_DOOR=31,
+//ENTRANCE_SP=37, HERO_LKD_DR=38 were all appended later, away from the tiles
+//they're conceptually closest to). New tile types get the next free ID (39+),
+//appended at the end - never inserted into the existing range.
 public class Terrain {
 
 	public static final int CHASM			= 0;
