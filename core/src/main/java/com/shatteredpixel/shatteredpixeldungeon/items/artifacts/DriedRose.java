@@ -781,7 +781,10 @@ public class DriedRose extends Artifact {
 
 			} else {
 
-				int depth = (Dungeon.depth - 1) / 5;
+				//Java's truncating int division would otherwise put depth 0 in the same bracket
+				// as depths 1-5 ((0-1)/5 == 0) - Region 0 has no sewers/prison/etc dialogue set,
+				// so it must fall through to the switch's default instead of aliasing to "sewers".
+				int depth = Dungeon.depth <= 0 ? -1 : (Dungeon.depth - 1) / 5;
 
 				//only some lines are said on the first floor of a depth
 				int variant = Dungeon.depth % 5 == 1 ? Random.IntRange(1, 3) : Random.IntRange(1, 6);
@@ -811,8 +814,9 @@ public class DriedRose extends Artifact {
 		}
 		
 		public void sayBoss(){
-			int depth = (Dungeon.depth - 1) / 5;
-			
+			//see sayAppeared() above for why depth 0 must not alias to bracket 0 ("sewers")
+			int depth = Dungeon.depth <= 0 ? -1 : (Dungeon.depth - 1) / 5;
+
 			switch(depth){
 				case 0:
 					yell( Messages.get( this, "seen_goo_" + Random.IntRange(1, 3) ));

@@ -588,17 +588,11 @@ public abstract class RegularLevel extends Level {
 		Random.pushGenerator( Random.Long() );
 			if (Document.ADVENTURERS_GUIDE.allPagesFound()){
 
-				int region = 1+(Dungeon.depth-1)/5;
-
-				Document regionDoc;
-				switch( region ){
-					default: regionDoc = null; break;
-					case 1: regionDoc = Document.SEWERS_GUARD; break;
-					case 2: regionDoc = Document.PRISON_WARDEN; break;
-					case 3: regionDoc = Document.CAVES_EXPLORER; break;
-					case 4: regionDoc = Document.CITY_WARLOCK; break;
-					case 5: regionDoc = Document.HALLS_KING; break;
-				}
+				//RegionDefinition[] replaces the old region-number switch (docs/depth0-findings.md
+				// Segment 4a) - regionOf() returning null (Region 0, depth 26) means no lore
+				// document, matching the old switch's default branch for both cases.
+				RegionDefinition region = RegionDefinition.regionOf(Dungeon.depth);
+				Document regionDoc = region != null ? region.loreDocument : null;
 
 				if (regionDoc != null && !regionDoc.allPagesFound()) {
 
@@ -622,7 +616,7 @@ public abstract class RegularLevel extends Level {
 						float percentComplete = pagesFound / totalPages;
 
 						// initial value is the first floor in a region
-						int targetFloor = 5*(region-1) + 1;
+						int targetFloor = region.firstDepth;
 						targetFloor += Math.round(3*percentComplete);
 
 						//TODO maybe drop last page in boss floor with custom logic?

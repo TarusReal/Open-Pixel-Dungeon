@@ -21,7 +21,6 @@
 
 package com.shatteredpixel.shatteredpixeldungeon.scenes;
 
-import com.shatteredpixel.shatteredpixeldungeon.Assets;
 import com.shatteredpixel.shatteredpixeldungeon.Chrome;
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.GamesInProgress;
@@ -36,6 +35,7 @@ import com.shatteredpixel.shatteredpixeldungeon.items.LostBackpack;
 import com.shatteredpixel.shatteredpixeldungeon.items.artifacts.SkeletonKey;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Document;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Notes;
+import com.shatteredpixel.shatteredpixeldungeon.levels.RegionDefinition;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.Chasm;
@@ -175,37 +175,53 @@ public class InterlevelScene extends PixelScene {
 
 		//for portrait users, each run the splashes change what details they focus on
 		Random.pushGenerator(seed+lastRegion);
+			//asset per case now reads RegionDefinition[] (docs/depth0-findings.md Segment 4a)
+			// instead of a hardcoded Assets.Splashes constant; the focus-point sub-variants stay
+			// hand-tuned per image, unchanged, since RegionDefinition doesn't (and shouldn't) model
+			// those - they're not part of "which region is this depth in".
 			switch (lastRegion){
+				case 0:
+					//Region 0 has no dedicated splash art yet, reuses Sewers' image+focus points
+					// (RegionDefinition.REGIONS[0].splashAsset - see its class comment)
+					loadingAsset = RegionDefinition.REGIONS[0].splashAsset;
+					switch (Random.Int(2)){
+						case 0: loadingCenter = 180; break;
+						case 1: loadingCenter = 485; break;
+					}
+					break;
 				case 1:
-					loadingAsset = Assets.Splashes.SEWERS;
+					loadingAsset = RegionDefinition.REGIONS[1].splashAsset;
 					switch (Random.Int(2)){
 						case 0: loadingCenter = 180; break; //focus on rats and left side
 						case 1: loadingCenter = 485; break; //focus on center pipe and door
 					}
 					break;
 				case 2:
-					loadingAsset = Assets.Splashes.PRISON;
+					loadingAsset = RegionDefinition.REGIONS[2].splashAsset;
 					switch (Random.Int(3)){
 						case 0: loadingCenter = 190; break; //focus on left skeleton
 						case 1: loadingCenter = 402; break; //focus on center arch
 					}
 					break;
 				case 3:
-					loadingAsset = Assets.Splashes.CAVES;
+					loadingAsset = RegionDefinition.REGIONS[3].splashAsset;
 					switch (Random.Int(3)){
 						case 0: loadingCenter = 340; break; //focus on center gnoll groups
 						case 1: loadingCenter = 625; break; //focus on right gnoll
 					}
 					break;
 				case 4:
-					loadingAsset = Assets.Splashes.CITY;
+					loadingAsset = RegionDefinition.REGIONS[4].splashAsset;
 					switch (Random.Int(3)){
 						case 0: loadingCenter = 275; break; //focus on left bookcases
 						case 1: loadingCenter = 485; break; //focus on center pathway
 					}
 					break;
 				case 5: default:
-					loadingAsset = Assets.Splashes.HALLS;
+					//depth 26 (LastLevel) also lands here, same as before this refactor - it isn't
+					// part of any RegionDefinition entry (see its class comment), and always did
+					// share Halls' splash via this same case-5-or-default merge
+					loadingAsset = RegionDefinition.REGIONS[5].splashAsset;
 					switch (Random.Int(3)){
 						case 0: loadingCenter = 145; break; //focus on left arches
 						case 1: loadingCenter = 400; break; //focus on ripper demon

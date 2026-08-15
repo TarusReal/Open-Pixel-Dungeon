@@ -46,9 +46,20 @@ public class Bones {
 	private static final String BRANCH	= "branch";
 	private static final String ITEM	= "item";
 	private static final String HERO_CLASS	= "hero_class";
+	private static final String DEPLETED	= "depleted";
 
+	//real depth of the current bones location, or -1 if there is none (daily run, no bones.dat
+	// yet, ...). Distinct from depleted below - depth 0 is a real, valid location since Region 0.
 	private static int depth = -1;
 	private static int branch = -1;
+
+	//whether bones.dat has already been read from disk this process lifetime, so we don't hit
+	// the disk again on every get() call once we know the answer (success or "there is none")
+	private static boolean loaded = false;
+
+	//whether the bones at depth/branch above have already been collected at this location -
+	// kept separate from depth so a real depth 0 can never be mistaken for "already looted"
+	private static boolean depleted = false;
 
 	private static Item item;
 	private static HeroClass heroClass;
@@ -60,6 +71,8 @@ public class Bones {
 		depth = Math.max(Dungeon.depth, Statistics.deepestFloor-5);
 
 		branch = Dungeon.branch;
+		loaded = true;
+		depleted = false;
 
 		//daily runs do not interact with remains
 		if (Dungeon.daily) {
@@ -157,14 +170,14 @@ public class Bones {
 			return null;
 		}
 
-		if (depth == -1) {
-
+		if (!loaded) {
 			try {
 				Bundle bundle = FileUtils.bundleFromFile(BONES_FILE);
 
 				depth = bundle.getInt( LEVEL );
 				branch = bundle.getInt( BRANCH );
-				if (depth > 0) {
+				depleted = bundle.getBoolean( DEPLETED );
+				if (!depleted) {
 					if (bundle.contains(ITEM)) {
 						item = (Item) bundle.get(ITEM);
 					} else {
@@ -176,84 +189,88 @@ public class Bones {
 						heroClass = null;
 					}
 				}
-
-				return get();
+				loaded = true;
 
 			} catch (IOException e) {
 				return null;
 			}
+		}
 
-		} else {
-			if (lootAtCurLevel()) {
+		if (depleted) {
+			return null;
+		}
 
-				Bundle emptyBones = new Bundle();
-				emptyBones.put(LEVEL, 0);
-				try {
-					FileUtils.bundleToFile( BONES_FILE, emptyBones );
-				} catch (IOException e) {
-					ShatteredPixelDungeon.reportException(e);
-				}
-				depth = 0;
+		if (lootAtCurLevel()) {
 
-				//challenged or seeded runs don't get items from prior runs
-				if (Dungeon.challenges != 0 || !Dungeon.customSeedText.isEmpty()){
-					item = null;
-				}
-
-				//Enforces artifact uniqueness
-				if (item instanceof Artifact){
-					if (Generator.removeArtifact(((Artifact)item).getClass())) {
-						
-						//generates a new artifact of the same type, always +0
-						Artifact artifact = Reflection.newInstance(((Artifact)item).getClass());
-						
-						if (artifact != null){
-							artifact.cursed = true;
-							artifact.cursedKnown = true;
-						}
-
-						item = artifact;
-						
-					} else {
-						item = new Gold(item.value());
-					}
-				}
-
-				if (item != null) {
-					if (item.isUpgradable() && !(item instanceof MissileWeapon)) {
-						item.cursed = true;
-						item.cursedKnown = true;
-					}
-
-					if (item.isUpgradable()) {
-						//caps at +3
-						if (item.level() > 3) {
-							item.degrade(item.level() - 3);
-						}
-						//thrown weapons are always IDed, otherwise set unknown
-						item.levelKnown = item instanceof MissileWeapon;
-					}
-
-					item.reset();
-				}
-
-				ArrayList<Item> result = new ArrayList<>();
-
-				if (heroClass != null) {
-					result.add(RemainsItem.get(heroClass));
-					if (Dungeon.bossLevel()){
-						Statistics.qualifiedForBossRemainsBadge = true;
-					}
-				}
-
-				if (item != null) {
-					result.add(item);
-				}
-
-				return result.isEmpty() ? null : result;
-			} else {
-				return null;
+			Bundle emptyBones = new Bundle();
+			emptyBones.put(LEVEL, depth);
+			emptyBones.put(BRANCH, branch);
+			emptyBones.put(DEPLETED, true);
+			try {
+				FileUtils.bundleToFile( BONES_FILE, emptyBones );
+			} catch (IOException e) {
+				ShatteredPixelDungeon.reportException(e);
 			}
+			depleted = true;
+
+			//challenged or seeded runs don't get items from prior runs
+			if (Dungeon.challenges != 0 || !Dungeon.customSeedText.isEmpty()){
+				item = null;
+			}
+
+			//Enforces artifact uniqueness
+			if (item instanceof Artifact){
+				if (Generator.removeArtifact(((Artifact)item).getClass())) {
+
+					//generates a new artifact of the same type, always +0
+					Artifact artifact = Reflection.newInstance(((Artifact)item).getClass());
+
+					if (artifact != null){
+						artifact.cursed = true;
+						artifact.cursedKnown = true;
+					}
+
+					item = artifact;
+
+				} else {
+					item = new Gold(item.value());
+				}
+			}
+
+			if (item != null) {
+				if (item.isUpgradable() && !(item instanceof MissileWeapon)) {
+					item.cursed = true;
+					item.cursedKnown = true;
+				}
+
+				if (item.isUpgradable()) {
+					//caps at +3
+					if (item.level() > 3) {
+						item.degrade(item.level() - 3);
+					}
+					//thrown weapons are always IDed, otherwise set unknown
+					item.levelKnown = item instanceof MissileWeapon;
+				}
+
+				item.reset();
+			}
+
+			ArrayList<Item> result = new ArrayList<>();
+
+			if (heroClass != null) {
+				result.add(RemainsItem.get(heroClass));
+				if (Dungeon.bossLevel()){
+					Statistics.qualifiedForBossRemainsBadge = true;
+				}
+			}
+
+			if (item != null) {
+				result.add(item);
+			}
+
+			return result.isEmpty() ? null : result;
+		} else {
+			return null;
 		}
 	}
 

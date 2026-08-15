@@ -87,6 +87,15 @@ renaming `WornKey` again without updating it, fails a test instead of failing si
 players with old saves. If you add a new `Bundle.addAlias(...)` call there, add a matching case
 to this test the same way.
 
+`Depth0SentinelTest`, `BonesStateTest`, `Depth0RoomFactoryGuardTest`, `RegionDefinitionTest`, and
+`Depth0SmokeTest` cover the depth=0 ("Region 0" / surface) work described in
+`docs/depth0-implementation.md` - together they check the `-1` "no depth" sentinel convention,
+`Bones`'s three-way `loaded`/`depleted`/`depth` state split, the four `chances[27]` array-index
+crash guards, `RegionDefinition[]`'s depth-1-26 byte-for-byte equivalence with the switches it
+replaced, and an end-to-end generate/enter/leave smoke test for depth 0 itself. Useful as a
+worked example of the pattern in this file's "Writing a new test" section applied to a real,
+multi-file change - and as regression coverage if depth 0 or `RegionDefinition` are touched again.
+
 ## Tests must not run in parallel
 
 Game state (`Dungeon`, `Actor`, `Random`, `GamesInProgress`, ...) lives in static fields shared

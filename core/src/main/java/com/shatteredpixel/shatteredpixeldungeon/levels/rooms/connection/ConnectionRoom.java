@@ -23,6 +23,7 @@ package com.shatteredpixel.shatteredpixeldungeon.levels.rooms.connection;
 
 import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
+import com.watabou.utils.GameMath;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
 
@@ -79,6 +80,9 @@ public abstract class ConnectionRoom extends Room {
 	}
 	
 	public static ConnectionRoom createRoom(){
-		return Reflection.newInstance(rooms.get(Random.chances(chances[Dungeon.depth])));
+		//chances[] only has entries for depths 1-26; gate defensively so depth 0 (or beyond 26)
+		// can't NPE on the missing array slot - see StandardRoom.createRoom() for the same pattern.
+		int depth = (int)GameMath.gate(1, Dungeon.depth, chances.length-1);
+		return Reflection.newInstance(rooms.get(Random.chances(chances[depth])));
 	}
 }

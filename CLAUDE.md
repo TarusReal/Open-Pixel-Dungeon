@@ -38,7 +38,10 @@ Wichtige Pakete in `core/.../shatteredpixeldungeon/`:
 - `actors/` – `Char` → `Hero` / `Mob`; `buffs/` (Statuseffekte), `hero/Talent.java`.
 - `items/` – alle Gegenstände. `Generator.java` ist die zentrale Loot-Tabelle.
 - `levels/` – Levelklassen pro Region, `rooms/` (Raumtypen), `builders/`,
-  `painters/`, `traps/`, `Terrain.java` (Kachel-IDs).
+  `painters/`, `traps/`, `Terrain.java` (Kachel-IDs). `RegionDefinition.java`
+  ist die zentrale Regionen-Tabelle (Etage 1–26, s. Fallstrick #7);
+  `Region0Level.java` ist der eigenständige, raumlose Platzhalter für Etage 0
+  ("Oberfläche", noch ohne echten Inhalt – siehe `docs/depth0-implementation.md`).
 - `scenes/` – Bildschirme. `GameScene.java` ist der Spielbildschirm und ebenfalls
   über statische Methoden global erreichbar.
 - `journal/` – `Bestiary`, `Catalog`, `Document`: Registrierungslisten für Inhalte.
@@ -101,12 +104,43 @@ typischerweise: Klasse, `Generator`, `ItemSpriteSheet`, `journal/Catalog`, ggf.
 `items/Recipe`, plus Texte in zwei `.properties`-Dateien. Nichts davon erzwingt der
 Compiler.
 
-**7. Etagen 1–26 sind hartcodiert.** `Dungeon.newLevel()` (switch über `depth`),
-`Dungeon.bossLevel()`, `Dungeon.shopOnLevel()`, `MobSpawner.standardMobRotation()`,
-`StandardRoom.chances[27]`, `Generator.floorSetTierProbs`. Dazu ~290 Stellen mit
-`Dungeon.depth` und verstreute `depth/5`-Kapitelrechnung.
+**7. Etagen 1–26 sind die Haupt-Kapitel, über `RegionDefinition[]` verwaltet.**
+`levels/RegionDefinition.java` bündelt pro Region (Sewers/Prison/Caves/City/Halls,
+je `firstDepth`+`floorCount=5`) die reguläre und die Boss-Levelklasse, das
+Regions-Lore-Dokument und das Ladebildschirm-Splash-Bild; `regionOf(depth)` ist die
+zentrale Lookup-Funktion. `Dungeon.newLevel()`, `Dungeon.bossLevel()` und
+`RegularLevel`s Regions-Dokument-Auswahl lesen alle aus dieser Tabelle statt aus
+eigenen `switch(depth)`-Blöcken – Änderungen an der Etagen-/Regionsstruktur gehören
+dort hin. Etage 26 (`LastLevel`) ist bewusst KEIN Tabelleneintrag (kein 5-Etagen-Block,
+kein Boss, kein Lore-Dokument) und bleibt ein expliziter Sonderfall in `newLevel()`.
+`ShopRoom.generateItems()` wurde bewusst NICHT auf die Tabelle umgestellt – der
+Imp-Shop auf der City-Boss-Etage nutzt einen abweichenden (höheren) Tier als der
+reguläre City-Regionsshop, lässt sich nicht verlustfrei auf "ein Wert pro Region"
+abbilden (Details: `docs/depth0-implementation.md`, Segment 3).
+Eigenständig und UNVERÄNDERT davon: `StandardRoom.chances[27]` (7 gröbere Brackets),
+`MobRegistry.BRACKET_DEPTHS` (20 feinere Brackets), `Generator.floorSetTierProbs` –
+bewusst eigene, feinere Tabellen, nicht durch `RegionDefinition` ersetzt. Dazu weiterhin
+~290 Stellen mit rohem `Dungeon.depth` und verstreute `depth/5`-Kapitelrechnung
+außerhalb der migrierten Stellen.
 
-**8. `Generator.random()` ist nur reproduzierbar innerhalb eines geseedeten RNG-Blocks.**
+Seit `docs/depth0-implementation.md` existiert zusätzlich **Etage 0** als eigene,
+eigenständige Region ("Oberfläche", `Region0Level.java`, `RegionDefinition.REGIONS[0]`)
+– kein `RegularLevel`/`StandardRoom`-Aufbau, kein Boss, kein Lore-Dokument, noch ohne
+echten Inhalt (Häuser/NPCs/Handel = Fork-2-Territorium). Über den normalen Spielfluss
+aktuell nicht erreichbar (Etage 1s Aufstiegsfeld führt weiterhin zum Amulett-Sieg-
+Bildschirm, nicht zu Etage 0) – nur direkt ansteuerbar (`Dungeon.depth=0`).
+
+**8. -1 ist die durchgängige Sentinel-Konvention für "keine Etage gesetzt"**
+(`LloydsBeacon.returnDepth`, `BeaconOfReturning.returnDepth`, `Bones.depth`,
+`Dungeon.depth` in `loadGame()`, `Statistics.deepestFloor`/`highestAscent`). Seit
+Etage 0 eine echte, ladbare Etage ist, steht `0` dafür NICHT mehr zur Verfügung –
+neue "kein Wert"-Zustände immer auf `-1` legen, nie auf `0`. `Bones.java` trennt
+zusätzlich "noch nicht von der Platte gelesen" (`loaded`, `boolean`) und "an diesem
+Ort bereits abgeholt" (`depleted`, `boolean`) in eigene Felder statt sie im
+`depth`-Wert zu kodieren – Vorlage, falls an anderer Stelle ein ähnlicher
+Drei-Zustände-in-einem-Feld-Fall auftaucht.
+
+**9. `Generator.random()` ist nur reproduzierbar innerhalb eines geseedeten RNG-Blocks.**
 `Dungeon.init()` wirft den geseedeten Zufallsgenerator direkt nach `Generator.fullReset()`
 wieder weg (`Random.resetGenerators()`) und arbeitet danach mit echtem Zufall weiter —
 Absicht, damit z. B. Start-Flüche nicht aus dem Seed ablesbar sind. Reproduzierbar wird
@@ -128,3 +162,10 @@ Item-Loot erst wieder, wenn man wie `Level.create()` selbst einen Seed pusht
   Arrays: Länge und Reihenfolge beider Seiten gegenprüfen.
 - Details und größere Umbauvorhaben gehören in eigene Dokumente unter `docs/`,
   nicht in diese Datei.
+- **Codeblöcke in `docs/*.md` nur mit Sprach-Tag (` ```java `), wenn der Inhalt
+  eigenständig kompilierbar wäre.** Nicht-kompilierbare Fragmente, Pseudocode
+  oder Diff-artige Schnipsel (Variablen ohne Deklaration, abgeschnittene
+  Methodenrümpfe) bekommen einen Codeblock ohne Sprach-Tag (` ``` ` statt
+  ` ```java `). Grund: Manche IDEs syntax-/semantik-prüfen sprach-getaggte
+  Codeblöcke in Markdown-Dateien und markieren dann in reiner Doku-Prosa
+  Fehler, die dort nicht hingehören.

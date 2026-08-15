@@ -25,6 +25,7 @@ import com.shatteredpixel.shatteredpixeldungeon.Dungeon;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Terrain;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
+import com.watabou.utils.GameMath;
 import com.watabou.utils.Point;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
@@ -225,7 +226,12 @@ public abstract class StandardRoom extends Room {
 
 
 	public static StandardRoom createRoom(){
-		return Reflection.newInstance(rooms[Random.chances(chances[Dungeon.depth])].cls);
+		//chances[] only has entries for depths 1-26 (Region 0 uses its own, non-StandardRoom
+		// level layout - see docs/depth0-findings.md); gate defensively so any caller that still
+		// reaches this with depth 0 (or beyond 26) degrades to the nearest real bracket instead
+		// of an NPE on the missing array slot.
+		int depth = (int)GameMath.gate(1, Dungeon.depth, chances.length-1);
+		return Reflection.newInstance(rooms[Random.chances(chances[depth])].cls);
 	}
 
 }

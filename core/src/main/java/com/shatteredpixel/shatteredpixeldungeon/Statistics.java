@@ -78,8 +78,8 @@ public class Statistics {
 	public static void reset() {
 		
 		goldCollected	= 0;
-		deepestFloor	= 0;
-		highestAscent	= 0;
+		deepestFloor	= -1;
+		highestAscent	= -1;
 		enemiesSlain	= 0;
 		foodEaten		= 0;
 		itemsCrafted    = 0;

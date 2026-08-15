@@ -102,7 +102,7 @@ public enum Rankings {
 		rec.heroClass	= Dungeon.hero.heroClass;
 		rec.armorTier	= Dungeon.hero.tier();
 		rec.herolevel	= Dungeon.hero.lvl;
-		if (Statistics.highestAscent == 0){
+		if (Statistics.highestAscent == -1){
 			rec.depth = Statistics.deepestFloor;
 			rec.ascending = false;
 		} else {

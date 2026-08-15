@@ -28,6 +28,7 @@ import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.levels.painters.Painter;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.Room;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.standard.StandardRoom;
+import com.watabou.utils.GameMath;
 import com.watabou.utils.Point;
 import com.watabou.utils.Random;
 import com.watabou.utils.Reflection;
@@ -119,6 +120,9 @@ public class ExitRoom extends StandardRoom {
 	}
 
 	public static StandardRoom createExit(){
-		return Reflection.newInstance(rooms.get(Random.chances(chances[Dungeon.depth])));
+		//chances[] only has entries for depths 1-26; gate defensively so depth 0 (or beyond 26)
+		// can't NPE on the missing array slot - see StandardRoom.createRoom() for the same pattern.
+		int depth = (int)GameMath.gate(1, Dungeon.depth, chances.length-1);
+		return Reflection.newInstance(rooms.get(Random.chances(chances[depth])));
 	}
 }

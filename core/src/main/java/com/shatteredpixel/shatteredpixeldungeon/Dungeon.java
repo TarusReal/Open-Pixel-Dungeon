@@ -54,21 +54,12 @@ import com.shatteredpixel.shatteredpixeldungeon.items.scrolls.Scroll;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfRegrowth;
 import com.shatteredpixel.shatteredpixeldungeon.items.wands.WandOfWarding;
 import com.shatteredpixel.shatteredpixeldungeon.journal.Notes;
-import com.shatteredpixel.shatteredpixeldungeon.levels.CavesBossLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.CavesLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.CityBossLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.CityLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.DeadEndLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.HallsBossLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.HallsLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.LastLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.Level;
 import com.shatteredpixel.shatteredpixeldungeon.levels.MiningLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.PrisonBossLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.PrisonLevel;
+import com.shatteredpixel.shatteredpixeldungeon.levels.RegionDefinition;
 import com.shatteredpixel.shatteredpixeldungeon.levels.RegularLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.SewerBossLevel;
-import com.shatteredpixel.shatteredpixeldungeon.levels.SewerLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.VaultLevel;
 import com.shatteredpixel.shatteredpixeldungeon.levels.features.LevelTransition;
 import com.shatteredpixel.shatteredpixeldungeon.levels.rooms.secret.SecretRoom;
@@ -86,6 +77,7 @@ import com.watabou.utils.Bundle;
 import com.watabou.utils.FileUtils;
 import com.watabou.utils.PathFinder;
 import com.watabou.utils.Random;
+import com.watabou.utils.Reflection;
 import com.watabou.utils.SparseArray;
 
 import java.io.IOException;
@@ -301,57 +293,19 @@ public class Dungeon {
 		
 		Level level;
 		if (branch == 0) {
-			switch (depth) {
-				case 1:
-				case 2:
-				case 3:
-				case 4:
-					level = new SewerLevel();
-					break;
-				case 5:
-					level = new SewerBossLevel();
-					break;
-				case 6:
-				case 7:
-				case 8:
-				case 9:
-					level = new PrisonLevel();
-					break;
-				case 10:
-					level = new PrisonBossLevel();
-					break;
-				case 11:
-				case 12:
-				case 13:
-				case 14:
-					level = new CavesLevel();
-					break;
-				case 15:
-					level = new CavesBossLevel();
-					break;
-				case 16:
-				case 17:
-				case 18:
-				case 19:
-					level = new CityLevel();
-					break;
-				case 20:
-					level = new CityBossLevel();
-					break;
-				case 21:
-				case 22:
-				case 23:
-				case 24:
-					level = new HallsLevel();
-					break;
-				case 25:
-					level = new HallsBossLevel();
-					break;
-				case 26:
-					level = new LastLevel();
-					break;
-				default:
-					level = new DeadEndLevel();
+			//depths 1-26: RegionDefinition[] replaces the old hand-synced switch (docs/
+			// depth0-findings.md Segment 4a) - same class per depth, reine Struktur.
+			// Depth 0 (Region 0) and depth 26 (LastLevel, not part of any region - see
+			// RegionDefinition's class comment) are the two cases outside the table itself.
+			RegionDefinition region = RegionDefinition.regionOf(depth);
+			if (region != null) {
+				Class<? extends Level> cls = (region.bossLevelClass != null && depth == region.lastDepth())
+						? region.bossLevelClass : region.levelClass;
+				level = Reflection.newInstance(cls);
+			} else if (depth == 26) {
+				level = new LastLevel();
+			} else {
+				level = new DeadEndLevel();
 			}
 		} else if (branch == 1) {
 			switch (depth) {
@@ -439,7 +393,8 @@ public class Dungeon {
 	}
 	
 	public static boolean bossLevel( int depth ) {
-		return depth == 5 || depth == 10 || depth == 15 || depth == 20 || depth == 25;
+		RegionDefinition region = RegionDefinition.regionOf(depth);
+		return region != null && region.bossLevelClass != null && depth == region.lastDepth();
 	}
 
 	//value used for scaling of damage values and other effects.
@@ -527,6 +482,10 @@ public class Dungeon {
 	}
 
 	public static boolean posNeeded() {
+		//depth%5==0 would otherwise alias depth 0 with the end of floor set 1 (depth 5) - Region 0
+		// isn't part of any floor set (see docs/depth0-findings.md Entscheidungen)
+		if (depth <= 0) return false;
+
 		//2 POS each floor set
 		int posLeftThisSet = 2 - (LimitedDrops.STRENGTH_POTIONS.count - (depth / 5) * 2);
 		if (posLeftThisSet <= 0) return false;
@@ -543,6 +502,9 @@ public class Dungeon {
 	}
 	
 	public static boolean souNeeded() {
+		//see posNeeded() above
+		if (depth <= 0) return false;
+
 		int souLeftThisSet;
 		//3 SOU each floor set
 		souLeftThisSet = 3 - (LimitedDrops.UPGRADE_SCROLLS.count - (depth / 5) * 3);
@@ -554,6 +516,9 @@ public class Dungeon {
 	}
 	
 	public static boolean asNeeded() {
+		//see posNeeded() above
+		if (depth <= 0) return false;
+
 		//1 AS each floor set
 		int asLeftThisSet = 1 - (LimitedDrops.ARCANE_STYLI.count - (depth / 5));
 		if (asLeftThisSet <= 0) return false;
@@ -564,6 +529,9 @@ public class Dungeon {
 	}
 
 	public static boolean enchStoneNeeded(){
+		//see posNeeded() above
+		if (depth <= 0) return false;
+
 		//1 enchantment stone, spawns on chapter 2 or 3
 		if (!LimitedDrops.ENCH_STONE.dropped()){
 			int region = 1+depth/5;
@@ -577,16 +545,25 @@ public class Dungeon {
 	}
 
 	public static boolean intStoneNeeded(){
+		//see posNeeded() above - depth 0 would otherwise alias floor 1 (Random.Int(4-depth))
+		if (depth <= 0) return false;
+
 		//one stone on floors 1-3
 		return depth < 5 && !LimitedDrops.INT_STONE.dropped() && Random.Int(4-depth) == 0;
 	}
 
 	public static boolean trinketCataNeeded(){
+		//see posNeeded() above - depth 0 would otherwise alias floor 1 (Random.Int(4-depth))
+		if (depth <= 0) return false;
+
 		//one trinket catalyst on floors 1-3
 		return depth < 5 && !LimitedDrops.TRINKET_CATA.dropped() && Random.Int(4-depth) == 0;
 	}
 
 	public static boolean labRoomNeeded(){
+		//see posNeeded() above
+		if (depth <= 0) return false;
+
 		//one laboratory each floor set, in floor 3 or 4, 1/2 chance each floor
 		int region = 1+depth/5;
 		if (region > LimitedDrops.LAB_ROOM.count){
